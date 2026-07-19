@@ -1,0 +1,21 @@
+# Releasing
+
+Releases use semantic versioning and tags in the form `vMAJOR.MINOR.PATCH`.
+
+1. Update `version` in `pyproject.toml` and
+   `custom_components/kapso_whatsapp/manifest.json` to the same value.
+2. Add the release notes and date to `CHANGELOG.md`.
+3. Run `uv run python scripts/check_version.py`, then the validation commands
+   from `README.md`.
+4. Commit and push the release preparation to `main`. Wait for validation to
+   pass.
+5. Create and push the matching tag, for example:
+
+   ```bash
+   git tag -a v0.2.0 -m "Release v0.2.0"
+   git push origin v0.2.0
+   ```
+
+The release workflow verifies that the tag matches both version files and then
+creates the corresponding GitHub release with generated release notes. Never
+move or reuse a published release tag.
