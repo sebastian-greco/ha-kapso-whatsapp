@@ -1,12 +1,12 @@
 {
+  "domain": "kapso_whatsapp",
+  "name": "Kapso WhatsApp",
   "codeowners": ["@sebastian-greco"],
   "config_flow": true,
   "documentation": "https://github.com/sebastian-greco/ha-kapso-whatsapp",
-  "domain": "kapso_whatsapp",
   "integration_type": "service",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/sebastian-greco/ha-kapso-whatsapp/issues",
-  "name": "Kapso WhatsApp",
   "requirements": [],
   "version": "0.1.0"
 }

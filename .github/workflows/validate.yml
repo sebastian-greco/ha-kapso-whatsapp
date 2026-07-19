@@ -12,7 +12,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
-      - run: python -m pip install pytest pytest-asyncio pyyaml ruff
+      - run: python -m pip install aiohttp pytest pytest-asyncio pyyaml ruff
       - run: ruff check .
       - run: python scripts/check_version.py
       - run: python -m compileall -q custom_components tests
