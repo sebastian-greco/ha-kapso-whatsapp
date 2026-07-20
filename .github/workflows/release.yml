@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*.*.*"
+      - "waha-v*.*.*"
 
 permissions:
   contents: write
