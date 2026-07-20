@@ -14,6 +14,7 @@ from homeassistant.config_entries import (
     ConfigEntryState,
     ConfigFlow,
     ConfigFlowResult,
+    ConfigSubentry,
     ConfigSubentryFlow,
     SubentryFlowResult,
 )
@@ -21,6 +22,8 @@ from homeassistant.const import CONF_API_KEY, CONF_NAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    BooleanSelector,
+    BooleanSelectorConfig,
     SelectSelector,
     SelectSelectorConfig,
     TextSelector,
@@ -38,16 +41,24 @@ from .api import (
     KapsoRequestError,
 )
 from .const import (
+    CONF_CONTACT_ROLE,
+    CONF_GROUP_ADULTS,
     CONF_NOTIFICATION_MODE,
     CONF_PHONE_NUMBER_ID,
     CONF_RECIPIENT,
     CONF_TEMPLATE_LANGUAGE,
     CONF_TEMPLATE_NAME,
+    CONF_TEMPLATE_PARAMETER_FORMAT,
+    CONTACT_ROLE_FAMILY,
+    CONTACT_ROLES,
     DEFAULT_TEMPLATE_LANGUAGE,
     DOMAIN,
     NOTIFICATION_MODE_TEMPLATE,
     NOTIFICATION_MODES,
     SUBENTRY_TYPE_RECIPIENT,
+    TEMPLATE_PARAMETER_FORMAT_NAMED,
+    TEMPLATE_PARAMETER_FORMAT_POSITIONAL,
+    TEMPLATE_PARAMETER_FORMATS,
 )
 from .helpers import normalize_recipient
 
@@ -88,6 +99,24 @@ RECIPIENT_SCHEMA = vol.Schema(
         vol.Required(
             CONF_TEMPLATE_LANGUAGE, default=DEFAULT_TEMPLATE_LANGUAGE
         ): TextSelector(TextSelectorConfig()),
+        vol.Required(
+            CONF_TEMPLATE_PARAMETER_FORMAT,
+            default=TEMPLATE_PARAMETER_FORMAT_NAMED,
+        ): SelectSelector(
+            SelectSelectorConfig(
+                options=list(TEMPLATE_PARAMETER_FORMATS),
+                translation_key="template_parameter_format",
+            )
+        ),
+        vol.Required(CONF_CONTACT_ROLE, default=CONTACT_ROLE_FAMILY): SelectSelector(
+            SelectSelectorConfig(
+                options=list(CONTACT_ROLES),
+                translation_key="contact_role",
+            )
+        ),
+        vol.Required(CONF_GROUP_ADULTS, default=False): BooleanSelector(
+            BooleanSelectorConfig()
+        ),
     }
 )
 
@@ -188,12 +217,32 @@ class KapsoWhatsAppConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class RecipientSubentryFlow(ConfigSubentryFlow):
-    """Create a recipient and its notify entity."""
+    """Create or reconfigure a recipient and its notify entity."""
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Add a WhatsApp recipient."""
+        return await self._async_step_recipient(user_input, step_id="user")
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Modify an existing WhatsApp recipient."""
+        return await self._async_step_recipient(
+            user_input,
+            step_id="reconfigure",
+            reconfigure_subentry=self._get_reconfigure_subentry(),
+        )
+
+    async def _async_step_recipient(
+        self,
+        user_input: dict[str, Any] | None,
+        *,
+        step_id: str,
+        reconfigure_subentry: ConfigSubentry | None = None,
+    ) -> SubentryFlowResult:
+        """Validate and store recipient configuration."""
         entry = self._get_entry()
         if entry.state is not ConfigEntryState.LOADED:
             return self.async_abort(
@@ -220,27 +269,63 @@ class RecipientSubentryFlow(ConfigSubentryFlow):
                     unique_id = f"phone:{recipient}"
                     if any(
                         subentry.unique_id == unique_id
+                        and (
+                            reconfigure_subentry is None
+                            or subentry.subentry_id != reconfigure_subentry.subentry_id
+                        )
                         for subentry in entry.subentries.values()
                     ):
                         return self.async_abort(reason="already_configured")
 
+                    data = {
+                        CONF_RECIPIENT: recipient,
+                        CONF_NOTIFICATION_MODE: user_input[CONF_NOTIFICATION_MODE],
+                        CONF_TEMPLATE_NAME: template_name,
+                        CONF_TEMPLATE_LANGUAGE: user_input[
+                            CONF_TEMPLATE_LANGUAGE
+                        ].strip(),
+                        CONF_TEMPLATE_PARAMETER_FORMAT: user_input[
+                            CONF_TEMPLATE_PARAMETER_FORMAT
+                        ],
+                        CONF_CONTACT_ROLE: user_input[CONF_CONTACT_ROLE],
+                        CONF_GROUP_ADULTS: user_input[CONF_GROUP_ADULTS],
+                    }
+                    title = user_input[CONF_NAME].strip()
+                    if reconfigure_subentry is not None:
+                        return self.async_update_reload_and_abort(
+                            entry,
+                            reconfigure_subentry,
+                            title=title,
+                            unique_id=unique_id,
+                            data=data,
+                        )
                     return self.async_create_entry(
-                        title=user_input[CONF_NAME].strip(),
+                        title=title,
                         unique_id=unique_id,
-                        data={
-                            CONF_RECIPIENT: recipient,
-                            CONF_NOTIFICATION_MODE: user_input[CONF_NOTIFICATION_MODE],
-                            CONF_TEMPLATE_NAME: template_name,
-                            CONF_TEMPLATE_LANGUAGE: user_input[
-                                CONF_TEMPLATE_LANGUAGE
-                            ].strip(),
-                        },
+                        data=data,
                     )
 
+        suggested_values = user_input or {}
+        if user_input is None and reconfigure_subentry is not None:
+            suggested_values = {
+                CONF_NAME: reconfigure_subentry.title,
+                **reconfigure_subentry.data,
+                CONF_TEMPLATE_PARAMETER_FORMAT: reconfigure_subentry.data.get(
+                    CONF_TEMPLATE_PARAMETER_FORMAT,
+                    TEMPLATE_PARAMETER_FORMAT_POSITIONAL,
+                ),
+                CONF_CONTACT_ROLE: reconfigure_subentry.data.get(
+                    CONF_CONTACT_ROLE, CONTACT_ROLE_FAMILY
+                ),
+                CONF_GROUP_ADULTS: reconfigure_subentry.data.get(
+                    CONF_GROUP_ADULTS, False
+                ),
+            }
+
         return self.async_show_form(
-            step_id="user",
+            step_id=step_id,
             data_schema=self.add_suggested_values_to_schema(
-                RECIPIENT_SCHEMA, user_input or {}
+                RECIPIENT_SCHEMA, suggested_values
             ),
             errors=errors,
             description_placeholders=placeholders,

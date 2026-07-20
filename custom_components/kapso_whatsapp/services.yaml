@@ -48,6 +48,12 @@ send_template:
         - The garage door is still open.
       selector:
         object:
+    named_parameters:
+      example:
+        subject: Electricity outage
+        notification_details: Three grid-powered devices are offline.
+      selector:
+        object:
 
 send_authentication_code:
   fields:

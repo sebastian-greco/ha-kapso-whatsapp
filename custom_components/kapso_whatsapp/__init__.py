@@ -34,6 +34,7 @@ from .const import (
     ATTR_BODY_PARAMETERS,
     ATTR_CODE,
     ATTR_LANGUAGE,
+    ATTR_NAMED_PARAMETERS,
     ATTR_PREVIEW_URL,
     ATTR_TEMPLATE_NAME,
     ATTR_TO,
@@ -67,8 +68,11 @@ SEND_TEMPLATE_SCHEMA = BASE_SEND_SCHEMA.extend(
     {
         vol.Required(ATTR_TEMPLATE_NAME): cv.string,
         vol.Optional(ATTR_LANGUAGE, default=DEFAULT_TEMPLATE_LANGUAGE): cv.string,
-        vol.Optional(ATTR_BODY_PARAMETERS, default=[]): vol.All(
+        vol.Exclusive(ATTR_BODY_PARAMETERS, "template_parameters"): vol.All(
             cv.ensure_list, [cv.string]
+        ),
+        vol.Exclusive(ATTR_NAMED_PARAMETERS, "template_parameters"): vol.Schema(
+            {vol.Match(r"^[a-z][a-z0-9_]*$"): cv.string}
         ),
     }
 )
@@ -159,7 +163,8 @@ async def _async_handle_send_service(call: ServiceCall) -> ServiceResponse:
                 recipient,
                 call.data[ATTR_TEMPLATE_NAME],
                 call.data[ATTR_LANGUAGE],
-                body_parameters=list(call.data[ATTR_BODY_PARAMETERS]),
+                body_parameters=list(call.data.get(ATTR_BODY_PARAMETERS, [])),
+                named_body_parameters=dict(call.data.get(ATTR_NAMED_PARAMETERS, {})),
             )
         else:
             result = await entry.runtime_data.client.async_send_authentication_code(

@@ -123,6 +123,63 @@ async def test_send_template_payload() -> None:
 
 
 @pytest.mark.asyncio
+async def test_send_named_template_payload() -> None:
+    """Named parameters include Meta's required parameter_name field."""
+    session = FakeSession(FakeResponse(200, {"messages": [{"id": "wamid.named"}]}))
+    client = api.KapsoClient(session, "secret", "12345")
+
+    await client.async_send_template(
+        "393331234567",
+        "home_notification",
+        "en_US",
+        named_body_parameters={
+            "subject": "Electricity outage",
+            "notification_details": "Three grid-powered devices are offline.",
+        },
+    )
+
+    assert session.requests[0]["json"]["template"] == {
+        "name": "home_notification",
+        "language": {"code": "en_US"},
+        "components": [
+            {
+                "type": "body",
+                "parameters": [
+                    {
+                        "type": "text",
+                        "parameter_name": "subject",
+                        "text": "Electricity outage",
+                    },
+                    {
+                        "type": "text",
+                        "parameter_name": "notification_details",
+                        "text": "Three grid-powered devices are offline.",
+                    },
+                ],
+            }
+        ],
+    }
+
+
+@pytest.mark.asyncio
+async def test_template_parameter_formats_are_mutually_exclusive() -> None:
+    """A request cannot mix positional and named template parameters."""
+    session = FakeSession()
+    client = api.KapsoClient(session, "secret", "12345")
+
+    with pytest.raises(ValueError, match="cannot be combined"):
+        await client.async_send_template(
+            "393331234567",
+            "home_notification",
+            "en_US",
+            body_parameters=["Legacy value"],
+            named_body_parameters={"subject": "Named value"},
+        )
+
+    assert session.requests == []
+
+
+@pytest.mark.asyncio
 async def test_send_authentication_code_payload() -> None:
     """OTP templates put the code in the body and COPY_CODE button."""
     session = FakeSession(FakeResponse(200, {"messages": [{"id": "wamid.otp"}]}))

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -133,8 +134,14 @@ class KapsoClient:
         language: str,
         *,
         body_parameters: list[str] | None = None,
+        named_body_parameters: Mapping[str, str] | None = None,
     ) -> KapsoMessage:
-        """Send an approved WhatsApp template with positional body parameters."""
+        """Send an approved template with positional or named body parameters."""
+        if body_parameters and named_body_parameters:
+            raise ValueError(
+                "Positional and named template parameters cannot be combined"
+            )
+
         template: dict[str, Any] = {
             "name": template_name,
             "language": {"code": language},
@@ -146,6 +153,20 @@ class KapsoClient:
                     "parameters": [
                         {"type": "text", "text": parameter}
                         for parameter in body_parameters
+                    ],
+                }
+            ]
+        elif named_body_parameters:
+            template["components"] = [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "parameter_name": name,
+                            "text": value,
+                        }
+                        for name, value in named_body_parameters.items()
                     ],
                 }
             ]

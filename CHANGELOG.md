@@ -3,6 +3,26 @@
 All notable changes are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-07-20
+
+### Added
+
+- Named template parameters for the generic template action and recipient
+  notify entities.
+- Family, Adults, and Guests fan-out notify entities derived from recipient
+  settings.
+- Family member or Guest contact roles plus an independent Adult checkbox.
+- Recipient reconfiguration without deleting and re-adding the contact.
+- A documented migration path for the existing household notification router.
+
+### Changed
+
+- New template-backed recipients default to the recommended `subject` and
+  `notification_details` named parameters.
+- New individual entities use the contact name as their suggested entity ID.
+- Existing recipients remain on the legacy positional parameter format until
+  reconfigured.
+
 ## [0.1.0] - 2026-07-19
 
 ### Added
@@ -15,4 +35,5 @@ All notable changes are documented here. This project follows
 - Redacted diagnostics, API error mapping, and conflict retry handling.
 - HACS, Hassfest, lint, formatting, test, and release automation.
 
+[0.2.0]: https://github.com/sebastian-greco/ha-kapso-whatsapp/releases/tag/v0.2.0
 [0.1.0]: https://github.com/sebastian-greco/ha-kapso-whatsapp/releases/tag/v0.1.0

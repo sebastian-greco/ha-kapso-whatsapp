@@ -7,6 +7,7 @@ Phase 1 is outbound-only and provides:
 
 - A UI config flow for the Kapso API key and WhatsApp Business sender ID.
 - Multiple recipient subentries, each represented by a native `notify` entity.
+- Family, Adults, and Guests notify groups built from each contact's settings.
 - Template-backed notifications for proactive Home Assistant alerts.
 - Free-form text during an active WhatsApp 24-hour customer-service window.
 - Actions for general templates and COPY_CODE authentication templates.
@@ -18,8 +19,8 @@ Phase 1 is outbound-only and provides:
 - Home Assistant 2026.7 or newer.
 - A Kapso project API key.
 - A WhatsApp Business phone number connected to Kapso.
-- For proactive notifications, an approved utility template containing exactly
-  one positional body parameter.
+- For proactive notifications, an approved utility template. The recommended
+  template uses the named parameters `subject` and `notification_details`.
 
 The Kapso sandbox can send text but cannot send templates or target multiple
 recipients. Use a production WhatsApp connection to test template-backed notify
@@ -72,14 +73,57 @@ Open the configured Kapso WhatsApp integration and choose
 
 - **Name** becomes the notify entity name.
 - **Recipient** is a telephone number including country code.
+- **Contact role** is either **Family member** or **Guest**.
+- **Include in Adults group** independently adds the contact to Adults. An
+  adult guest therefore belongs to both Guests and Adults.
 - **Notification mode** controls what `notify.send_message` does:
   - **Approved utility template** is recommended for proactive alerts.
   - **Free-form text** works only while the recipient's 24-hour
     customer-service window is active.
-- **Default utility template** must have exactly one body parameter. The notify
-  message, including its optional title, is passed to that parameter.
+- **Template parameter format** should be **Named** for the recommended
+  template below. Existing recipients retain the legacy positional format
+  until they are reconfigured.
 
-A suitable template body is:
+### Create the recommended Kapso template
+
+Create a WhatsApp template in Kapso with these settings:
+
+- Name: `home_notification`
+- Category: **Utility**
+- Language: `en_US` (or the language configured for the recipient)
+- Parameter format: **Named**
+- Header type: **Text**
+- Header text: `Home Assistant` (static text, with no parameter)
+- Buttons: none for this first phase
+
+Use this body exactly to start:
+
+```text
+A household status notification was generated.
+
+Subject: {{subject}}
+
+Details:
+{{notification_details}}
+
+This is an automated message from your Home Assistant system.
+```
+
+Suggested example values are `Electricity outage` for `subject` and
+`Currently 3 grid-powered devices are offline, which may mean there is no
+electricity in the house.` for `notification_details`.
+
+The fixed wording is intentional: Meta rejects templates where variables make
+up too much of the content. A header containing only `{{subject}}` plus a body
+containing only `{{notification_details}}` can trigger error `2388293`.
+
+After Meta approves it, configure the recipient with template name
+`home_notification` and parameter format **Named**. To update an existing
+recipient, open the Kapso integration, select the recipient, and choose
+**Reconfigure**.
+
+For backward compatibility, **Positional** format still accepts a template
+with one body value:
 
 ```text
 Home Assistant notification:
@@ -97,16 +141,60 @@ After adding a recipient, select the created entity in an automation:
 actions:
   - action: notify.send_message
     target:
-      entity_id: notify.kapso_whatsapp_seb
+      entity_id: notify.sebastian
     data:
       title: Garage warning
       message: The garage door has been open for 10 minutes.
 ```
 
-The exact entity ID depends on the Kapso account and recipient names; select it
-from Home Assistant's entity picker. Home Assistant can target several Kapso
-notify entities in the same action.
-Each recipient consumes one WhatsApp message.
+New contacts use their contact name as the suggested entity ID, for example
+`notify.sebastian` or `notify.lucila`. Home Assistant may retain an older ID or
+add a suffix when an ID already exists, so confirm it in the entity picker.
+
+The integration also creates these logical group entities:
+
+| Entity | Recipients |
+| --- | --- |
+| `notify.family` | Contacts whose role is Family member |
+| `notify.adults` | Contacts with Include in Adults group enabled |
+| `notify.guests` | Contacts whose role is Guest |
+
+Each group fans out as individual WhatsApp deliveries. It is not a WhatsApp
+group chat, and each recipient consumes one message. Sending to a group with no
+matching contacts is a successful no-op.
+
+## Migrate an existing notification router
+
+Your existing wrapper scripts can remain the public interface. In the central
+router, map the current logical recipients to the new notify entities:
+
+```yaml
+sequence:
+  - variables:
+      whatsapp_targets:
+        sebastian: notify.sebastian
+        lucila: notify.lucila
+        family: notify.family
+        adults: notify.adults
+        guests: notify.guests
+      whatsapp_target: "{{ whatsapp_targets.get(person) }}"
+
+  # Keep your existing priority formatting before this action. In the current
+  # router, final_title already contains 🚨 for urgent or 💬 for low priority.
+  - action: notify.send_message
+    continue_on_error: true
+    target:
+      entity_id: "{{ whatsapp_target }}"
+    data:
+      title: "{{ final_title }}"
+      message: "{{ message }}"
+```
+
+This preserves the existing `title` and `message` contract: the integration
+maps them to `subject` and `notification_details`. Keep presence filtering in
+the router. Continue sending notifications containing Companion App action
+buttons to the Companion App as well; WhatsApp buttons and replies require the
+future inbound-webhook phase.
 
 ## Send free-form text
 
@@ -127,8 +215,23 @@ to be typed when creating the action in the UI.
 
 ## Send an approved template
 
-`body_parameters` are positional and must match `{{1}}`, `{{2}}`, and so on in
-the approved template:
+For a named template, use `named_parameters`:
+
+```yaml
+actions:
+  - action: kapso_whatsapp.send_template
+    data:
+      config_entry_id: YOUR_CONFIG_ENTRY_ID
+      to: "393331234567"
+      template_name: home_notification
+      language: en_US
+      named_parameters:
+        subject: Garage warning
+        notification_details: The garage door has been open for 10 minutes.
+```
+
+Positional `body_parameters` remain available for templates using `{{1}}`,
+`{{2}}`, and so on:
 
 ```yaml
 actions:
@@ -175,10 +278,11 @@ window is active.
 - Outbound text and templates only; media comes in a later phase.
 - No incoming-message webhook or delivery/read-status events yet.
 - The integration cannot query whether the recipient's 24-hour window is open.
-- Notify-template mode assumes one positional body parameter.
-- General template actions support positional body parameters but not template
-  headers or buttons yet.
-- Recipient changes currently require deleting and re-adding the recipient.
+- Notify entities support the recommended two named body parameters or the
+  legacy single positional body parameter.
+- General template actions support named or positional body parameters, but not
+  template headers or buttons yet.
+- Group entities fan out to individual contacts; they are not WhatsApp chats.
 
 ## Development
 

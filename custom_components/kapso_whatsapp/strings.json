@@ -39,7 +39,8 @@
     "recipient": {
       "abort": {
         "already_configured": "This recipient is already configured.",
-        "entry_not_loaded": "{entry_title} is not loaded."
+        "entry_not_loaded": "{entry_title} is not loaded.",
+        "reconfigure_successful": "The WhatsApp recipient was updated successfully."
       },
       "entry_type": "WhatsApp recipient",
       "error": {
@@ -50,22 +51,52 @@
         "user": "Add WhatsApp recipient"
       },
       "step": {
-        "user": {
+        "reconfigure": {
           "data": {
+            "contact_role": "Contact role",
+            "group_adults": "Include in Adults group",
             "name": "Name",
             "notification_mode": "Notification mode",
             "recipient": "Recipient",
             "template_language": "Template language",
-            "template_name": "Default utility template"
+            "template_name": "Default utility template",
+            "template_parameter_format": "Template parameter format"
           },
           "data_description": {
-            "name": "Name used for the notify entity, such as Seb or Family.",
+            "contact_role": "Choose whether this contact belongs to the Family or Guests notification group.",
+            "group_adults": "Also include this contact in the Adults notification group.",
+            "name": "Name used for the notify entity, such as Sebastian or Lucila.",
             "notification_mode": "Template is reliable for proactive alerts. Text only works during an active 24-hour customer-service window.",
             "recipient": "Phone number with country code.",
-            "template_language": "Language code of the approved template, such as en_US or it_IT.",
-            "template_name": "For template mode, use an approved utility template with exactly one body parameter for the notification text."
+            "template_language": "Exact language code of the approved template, such as en_US.",
+            "template_name": "Name of the approved utility template.",
+            "template_parameter_format": "Named maps title to subject and message to notification_details. Positional preserves the legacy single {{1}} format."
           },
-          "description": "Each recipient creates a native Home Assistant notify entity.",
+          "description": "Update this contact, template mapping, and household groups.",
+          "title": "Update WhatsApp recipient"
+        },
+        "user": {
+          "data": {
+            "contact_role": "Contact role",
+            "group_adults": "Include in Adults group",
+            "name": "Name",
+            "notification_mode": "Notification mode",
+            "recipient": "Recipient",
+            "template_language": "Template language",
+            "template_name": "Default utility template",
+            "template_parameter_format": "Template parameter format"
+          },
+          "data_description": {
+            "contact_role": "Choose whether this contact belongs to the Family or Guests notification group.",
+            "group_adults": "Also include this contact in the Adults notification group.",
+            "name": "Name used for the notify entity, such as Sebastian or Lucila.",
+            "notification_mode": "Template is reliable for proactive alerts. Text only works during an active 24-hour customer-service window.",
+            "recipient": "Phone number with country code.",
+            "template_language": "Exact language code of the approved template, such as en_US.",
+            "template_name": "Name of the approved utility template.",
+            "template_parameter_format": "Named maps title to subject and message to notification_details. Positional preserves the legacy single {{1}} format."
+          },
+          "description": "Each contact creates an individual notify entity and can join Family, Adults, or Guests fan-out groups.",
           "title": "Add WhatsApp recipient"
         }
       }
@@ -86,10 +117,22 @@
     }
   },
   "selector": {
+    "contact_role": {
+      "options": {
+        "family": "Family member",
+        "guest": "Guest"
+      }
+    },
     "notification_mode": {
       "options": {
         "template": "Approved utility template",
         "text": "Free-form text (24-hour window)"
+      }
+    },
+    "template_parameter_format": {
+      "options": {
+        "named": "Named (subject and notification_details)",
+        "positional": "Positional (legacy single value)"
       }
     }
   },
@@ -121,7 +164,7 @@
       "name": "Send authentication code"
     },
     "send_template": {
-      "description": "Send an approved WhatsApp template with positional body parameters.",
+      "description": "Send an approved WhatsApp template with positional or named body parameters.",
       "fields": {
         "body_parameters": {
           "description": "Ordered list of values for the template body placeholders.",
@@ -134,6 +177,10 @@
         "language": {
           "description": "Language code of the approved template.",
           "name": "Language"
+        },
+        "named_parameters": {
+          "description": "Map of approved body parameter names to their values. Do not combine with body parameters.",
+          "name": "Named parameters"
         },
         "template_name": {
           "description": "Name of the approved WhatsApp template.",
