@@ -2,6 +2,18 @@
 
 Releases use semantic versioning and tags in the form `vMAJOR.MINOR.PATCH`.
 
+The repository contains two independently versioned deliverables:
+
+- the Kapso HACS integration, versioned in `pyproject.toml` and its manifest;
+- the WAHA HAOS app, versioned in `waha/config.yaml` and published to GHCR with
+  the same image tag.
+
+Every push to `main` that changes `waha/` builds and publishes the app image.
+Pull requests build it without publishing. Bump the app version whenever its
+runtime image changes; documentation-only edits do not require a bump.
+After the first image publish, verify that the `ha-waha` GHCR package is public;
+HAOS cannot install a private package from a custom app repository.
+
 1. Update `version` in `pyproject.toml` and
    `custom_components/kapso_whatsapp/manifest.json` to the same value.
 2. Add the release notes and date to `CHANGELOG.md`.

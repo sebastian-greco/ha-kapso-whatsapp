@@ -9,3 +9,11 @@ Home Assistant Core's Telegram bot integration:
   https://github.com/home-assistant/core
 
 Home Assistant Core is licensed under the Apache License, Version 2.0.
+
+The optional WAHA app image incorporates WAHA:
+
+  WAHA
+  Copyright WAHA contributors
+  https://github.com/devlikeapro/waha
+
+WAHA is licensed under the Apache License, Version 2.0.

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WAHA</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0b141a;
+        --card: #111b21;
+        --line: #2a3942;
+        --text: #e9edef;
+        --muted: #8696a0;
+        --green: #00a884;
+        --green-2: #06cf9c;
+        --warn: #f7b955;
+        --danger: #ff6b6b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: radial-gradient(circle at top right, #123d35 0, var(--bg) 35rem);
+        color: var(--text);
+        font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main { width: min(980px, calc(100% - 32px)); margin: 0 auto; padding: 34px 0 56px; }
+      header { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 26px; }
+      h1 { margin: 0; font-size: clamp(28px, 5vw, 42px); letter-spacing: -0.04em; }
+      h2 { margin: 0; font-size: 18px; }
+      p { margin: 6px 0 0; }
+      .eyebrow { color: var(--green-2); font-weight: 700; letter-spacing: .09em; text-transform: uppercase; font-size: 12px; }
+      .muted { color: var(--muted); }
+      .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+      .card { grid-column: span 12; background: color-mix(in srgb, var(--card) 94%, transparent); border: 1px solid var(--line); border-radius: 16px; padding: 20px; box-shadow: 0 16px 46px rgba(0,0,0,.18); }
+      .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 18px; }
+      .stat { padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
+      .stat strong { display: block; font-size: 19px; margin-top: 3px; overflow-wrap: anywhere; }
+      .session { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 16px 0; border-top: 1px solid var(--line); }
+      .session:first-of-type { margin-top: 14px; }
+      .badge { display: inline-flex; align-items: center; gap: 7px; padding: 5px 9px; border-radius: 999px; background: #20322f; color: var(--green-2); font-size: 12px; font-weight: 750; }
+      .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+      .badge.warn { color: var(--warn); background: #372e20; }
+      .badge.bad { color: var(--danger); background: #3b2528; }
+      .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+      button { border: 1px solid var(--line); border-radius: 10px; background: #202c33; color: var(--text); padding: 9px 13px; font: inherit; font-weight: 650; cursor: pointer; }
+      button:hover { border-color: var(--green); }
+      button.primary { background: var(--green); border-color: var(--green); color: #071f19; }
+      button:disabled { opacity: .5; cursor: wait; }
+      #error { display: none; margin-bottom: 16px; padding: 13px 15px; color: #ffd9dc; background: #3b2528; border: 1px solid #713a40; border-radius: 12px; }
+      #qr { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.72); place-items: center; padding: 20px; z-index: 3; }
+      #qr.open { display: grid; }
+      #qr article { background: white; color: #111; padding: 18px; border-radius: 18px; text-align: center; width: min(390px, 100%); }
+      #qr img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+      #qr button { margin-top: 10px; }
+      footer { margin-top: 18px; color: var(--muted); font-size: 13px; }
+      @media (min-width: 760px) { .card.sessions { grid-column: span 8; } .card.help { grid-column: span 4; } }
+      @media (max-width: 620px) { header, .session { align-items: flex-start; flex-direction: column; } .summary { grid-template-columns: 1fr; } .actions { justify-content: flex-start; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div><div class="eyebrow">Home Assistant · WAHA</div><h1>WhatsApp control</h1><p class="muted">One private session, visible and manageable.</p></div>
+        <button id="refresh">Refresh</button>
+      </header>
+      <div id="error"></div>
+      <section class="grid">
+        <article class="card">
+          <h2>Service</h2>
+          <div class="summary">
+            <div class="stat"><span class="muted">WAHA</span><strong id="service">Checking…</strong></div>
+            <div class="stat"><span class="muted">Version</span><strong id="version">—</strong></div>
+            <div class="stat"><span class="muted">Engine</span><strong id="engine">GOWS</strong></div>
+          </div>
+        </article>
+        <article class="card sessions">
+          <h2>WhatsApp sessions</h2>
+          <p class="muted">Scan the QR once, then WAHA restores the linked session after restarts.</p>
+          <div id="sessions"></div>
+        </article>
+        <article class="card help">
+          <h2>Debugging</h2>
+          <p class="muted">Start, stop, and restart the WhatsApp session here. Container-level start/stop and full logs remain in Settings → Apps → WAHA.</p>
+          <p class="muted" style="margin-top:14px">The native WAHA dashboard is available only when port 3000 is explicitly exposed in the app’s Network settings.</p>
+        </article>
+      </section>
+      <footer>Experimental private integration. WAHA uses an unofficial WhatsApp protocol; keep a dedicated, recoverable number.</footer>
+    </main>
+    <div id="qr"><article><h2>Link WhatsApp</h2><p>WhatsApp → Linked devices → Link a device</p><img alt="WhatsApp linking QR code" /><button id="closeQr">Close</button></article></div>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const api = async (path, options) => { const response = await fetch(path, options); const data = await response.json(); if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`); return data; };
+      const statusClass = (status) => status === 'WORKING' ? '' : ['FAILED','STOPPED'].includes(status) ? 'bad' : 'warn';
+      function showError(error) { $('error').textContent = error.message || String(error); $('error').style.display = 'block'; }
+      async function action(name, action) { document.querySelectorAll('button').forEach((b) => b.disabled = true); try { await api(`control/session/${encodeURIComponent(name)}/${action}`, {method:'POST'}); setTimeout(load, 900); } catch (error) { showError(error); } finally { document.querySelectorAll('button').forEach((b) => b.disabled = false); } }
+      async function showQr(name) { try { const qr = await api(`control/session/${encodeURIComponent(name)}/qr`); $('qr').querySelector('img').src = `data:${qr.mimetype || 'image/png'};base64,${qr.data}`; $('qr').classList.add('open'); } catch (error) { showError(error); } }
+      async function createSession() { try { await api('control/session', {method:'POST'}); setTimeout(load, 900); } catch (error) { showError(error); } }
+      async function load() {
+        $('error').style.display = 'none';
+        try {
+          const data = await api('control/overview');
+          $('service').textContent = 'Online';
+          $('version').textContent = data.version?.version || data.version || 'Unknown';
+          $('engine').textContent = data.version?.engine || 'GOWS';
+          const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+          if (!sessions.length) {
+            $('sessions').innerHTML = `<div class="session"><div><strong>No session yet</strong><p class="muted">Create ${escapeHtml(data.configuredSession)} and scan its QR.</p></div><button class="primary" id="create">Create session</button></div>`;
+            $('create').onclick = createSession;
+            return;
+          }
+          $('sessions').innerHTML = sessions.map((session) => `<div class="session"><div><strong>${escapeHtml(session.name)}</strong><p><span class="badge ${statusClass(session.status)}">${escapeHtml(session.status)}</span></p></div><div class="actions">${session.status === 'SCAN_QR_CODE' ? `<button class="primary" data-qr="${escapeHtml(session.name)}">Show QR</button>` : ''}<button data-name="${escapeHtml(session.name)}" data-action="start">Start</button><button data-name="${escapeHtml(session.name)}" data-action="stop">Stop</button><button data-name="${escapeHtml(session.name)}" data-action="restart">Restart</button></div></div>`).join('');
+          document.querySelectorAll('[data-action]').forEach((button) => button.onclick = () => action(button.dataset.name, button.dataset.action));
+          document.querySelectorAll('[data-qr]').forEach((button) => button.onclick = () => showQr(button.dataset.qr));
+        } catch (error) { $('service').textContent = 'Unavailable'; showError(error); }
+      }
+      $('refresh').onclick = load;
+      $('closeQr').onclick = () => $('qr').classList.remove('open');
+      load();
+      setInterval(load, 15000);
+    </script>
+  </body>
+</html>

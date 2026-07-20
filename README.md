@@ -3,6 +3,17 @@
 Send Home Assistant notifications through WhatsApp using the
 [Kapso API](https://docs.kapso.ai/docs/whatsapp/send-messages/text).
 
+The repository now also contains an **experimental WAHA app for HAOS**. It is
+the start of the self-hosted path: one persistent household WhatsApp session,
+a Home Assistant sidebar control panel, and no Meta template requirement. The
+existing Kapso HACS integration remains available and unchanged while the WAHA
+path is tested.
+
+To install the WAHA app once its image is published, add this repository URL in
+**Settings → Apps → App store → Repositories**, then install **WAHA for Home
+Assistant**. Its app-specific setup and security guidance is in
+[`waha/DOCS.md`](waha/DOCS.md).
+
 Phase 1 is outbound-only and provides:
 
 - A UI config flow for the Kapso API key and WhatsApp Business sender ID.
@@ -53,7 +64,8 @@ Restart Home Assistant, then add **Kapso WhatsApp** from
 This project uses semantic versioning. HACS installs versioned GitHub releases;
 the integration version is available in
 `custom_components/kapso_whatsapp/manifest.json`. See [CHANGELOG.md](CHANGELOG.md)
-for release history.
+for release history. The WAHA app has an independent version in
+`waha/config.yaml`; its matching container image is published to GHCR.
 
 ## Account setup
 

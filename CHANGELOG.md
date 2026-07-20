@@ -3,6 +3,23 @@
 All notable changes are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- An experimental HAOS app packaging WAHA 2026.7.1 with the browserless GOWS
+  engine.
+- An ingress-native WAHA sidebar control panel for health, QR linking, and
+  session start, stop, and restart operations.
+- Persistent WAHA sessions, cold-backup support, watchdog monitoring, and a
+  GHCR image build workflow.
+
+### Security
+
+- The WAHA API port is disabled by default, media downloads are off in the
+  initial notification-only phase, and sidebar controls require Home Assistant
+  ingress.
+
 ## [0.2.0] - 2026-07-20
 
 ### Added
