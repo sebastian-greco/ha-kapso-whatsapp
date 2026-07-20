@@ -16,7 +16,7 @@ def test_app_defaults_are_private() -> None:
     config = _config()
 
     assert config["ingress"] is True
-    assert config["panel_admin"] is True
+    assert config.get("panel_admin", True) is True
     assert config["ports"]["3000/tcp"] is None
     assert config["options"]["api_key"] is None
     assert config["options"]["download_media"] is False

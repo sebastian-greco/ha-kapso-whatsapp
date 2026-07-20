@@ -7,16 +7,12 @@ image: ghcr.io/sebastian-greco/ha-waha
 arch:
   - amd64
 startup: services
-boot: auto
 init: false
 stage: experimental
 ingress: true
-ingress_port: 8099
 ingress_entry: /
 panel_icon: mdi:whatsapp
 panel_title: WAHA
-panel_admin: true
-watchdog: http://[HOST]:[PORT:8099]/health
 backup: cold
 ports:
   3000/tcp: null
