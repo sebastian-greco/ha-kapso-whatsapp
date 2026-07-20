@@ -24,6 +24,13 @@ function ingressRequest(req, allowDirect) {
   );
 }
 
+function requestUrl(requestTarget) {
+  const target = requestTarget || "/";
+  // Supervisor can request an ingress root ending in "//". WHATWG URL treats
+  // that as a protocol-relative URL, so collapse only repeated leading slashes.
+  return new URL(target.replace(/^\/{2,}/, "/"), "http://control.local");
+}
+
 async function parseResponse(response) {
   const text = await response.text();
   let body = text;
@@ -63,7 +70,7 @@ export function createControlServer({
   }
 
   const server = createServer(async (req, res) => {
-    const url = new URL(req.url || "/", "http://control.local");
+    const url = requestUrl(req.url);
 
     if (url.pathname === "/health") {
       try {

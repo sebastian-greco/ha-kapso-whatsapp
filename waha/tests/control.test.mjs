@@ -39,6 +39,13 @@ test("blocks control access outside Home Assistant ingress", async () => {
   assert.equal(response.status, 403);
 });
 
+test("serves the ingress root when Supervisor sends a double slash", async () => {
+  const base = await fixture(async () => new Response("{}"));
+  const response = await fetch(`${base}//`);
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), "<h1>WAHA</h1>");
+});
+
 test("overview calls WAHA with the configured API key", async () => {
   const requests = [];
   const base = await fixture(async (url, init) => {

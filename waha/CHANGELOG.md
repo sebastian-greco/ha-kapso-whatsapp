@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2
+
+- Prevent Home Assistant ingress root requests containing a double slash from
+  crashing the WAHA control panel and stopping the app.
+
 ## 0.2.1
 
 - Fix saving the app configuration by using Home Assistant Supervisor's
