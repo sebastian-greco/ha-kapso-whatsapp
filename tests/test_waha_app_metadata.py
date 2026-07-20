@@ -26,7 +26,7 @@ def test_app_image_and_upstream_are_version_pinned() -> None:
     config = _config()
     dockerfile = (APP_DIR / "Dockerfile").read_text()
 
-    assert config["version"] == "0.1.0"
+    assert config["version"] == "0.1.1"
     assert config["image"] == "ghcr.io/sebastian-greco/ha-waha"
     assert "devlikeapro/waha:gows-2026.7.1@sha256:" in dockerfile
-    assert "ARG BUILD_VERSION=0.1.0" in dockerfile
+    assert "ARG BUILD_VERSION=0.1.1" in dockerfile

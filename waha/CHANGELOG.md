@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Replace the obsolete Supervisor watchdog field with a native Docker health
+  check.
+- Remove configuration values that duplicate Home Assistant defaults.
+
 ## 0.1.0
 
 - Initial experimental HAOS app.
