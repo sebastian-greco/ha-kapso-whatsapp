@@ -7,3 +7,5 @@ __pycache__/
 .DS_Store
 opencode.jsonc
 *.py[cod]
+.codex/
+docs/ha_notification_system.md
