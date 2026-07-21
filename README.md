@@ -86,14 +86,15 @@ recipient model work for guests.
 
 The integration creates entities similar to:
 
-- `notify.sebastian`
-- `notify.lucila`
-- `notify.family`
-- `notify.adults`
-- `notify.guests`
+- `notify.waha_seba`
+- `notify.waha_lucila`
+- `notify.waha_family`
+- `notify.waha_adults`
+- `notify.waha_guests`
 
-Home Assistant may retain an existing entity ID or add a suffix, so confirm
-the actual ID in the entity picker.
+Adding, updating, or removing a recipient automatically refreshes the person
+and group entities. Home Assistant may retain an existing entity ID or add a
+suffix, so confirm the actual ID in the entity picker.
 
 ## Send a notification
 
@@ -103,15 +104,15 @@ Use the modern Home Assistant notify action:
 actions:
   - action: notify.send_message
     target:
-      entity_id: notify.sebastian
+      entity_id: notify.waha_seba
     data:
       title: Garage warning
       message: The garage door has been open for 10 minutes.
 ```
 
 The WhatsApp message is rendered as a bold title followed by the details. To
-fan out independently to a household group, target `notify.family`,
-`notify.adults`, or `notify.guests`.
+fan out independently to a household group, target `notify.waha_family`,
+`notify.waha_adults`, or `notify.waha_guests`.
 
 Existing notification routers can keep their `title` and `message` contract:
 
@@ -119,11 +120,11 @@ Existing notification routers can keep their `title` and `message` contract:
 sequence:
   - variables:
       whatsapp_targets:
-        sebastian: notify.sebastian
-        lucila: notify.lucila
-        family: notify.family
-        adults: notify.adults
-        guests: notify.guests
+        sebastian: notify.waha_seba
+        lucila: notify.waha_lucila
+        family: notify.waha_family
+        adults: notify.waha_adults
+        guests: notify.waha_guests
       whatsapp_target: "{{ whatsapp_targets.get(person) }}"
 
   - action: notify.send_message
@@ -151,6 +152,10 @@ actions:
 
 The automation editor provides a config-entry picker, so the ID does not need
 to be typed when building the action in the UI.
+
+For a staged transition from Companion App notifications, including dual
+delivery and the limitations around buttons, Alarmo, priority, and mobile-only
+payloads, follow the [notification migration guide](docs/NOTIFICATION_MIGRATION.md).
 
 ## Migrating from the Kapso integration
 

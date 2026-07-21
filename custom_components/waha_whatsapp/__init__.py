@@ -101,6 +101,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: WahaConfigEntry) -> bool
         raise ConfigEntryNotReady(f"Unable to connect to WAHA: {err}") from err
 
     entry.runtime_data = WahaRuntimeData(client, server, session)
+    entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -108,6 +109,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: WahaConfigEntry) -> bool
 async def async_unload_entry(hass: HomeAssistant, entry: WahaConfigEntry) -> bool:
     """Unload a WAHA WhatsApp config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def _async_reload_entry(
+    hass: HomeAssistant, entry: WahaConfigEntry
+) -> None:
+    """Reload recipient entities and group membership after entry changes."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def _async_handle_send_message(call: ServiceCall) -> ServiceResponse:

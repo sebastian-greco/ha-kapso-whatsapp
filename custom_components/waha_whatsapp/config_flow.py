@@ -189,7 +189,7 @@ class WahaWhatsAppConfigFlow(ConfigFlow, domain=DOMAIN):
             f"addon:{discovery_info.slug}:{data[CONF_SESSION]}"
         )
         await self.async_set_unique_id(self._discovery_unique_id)
-        self._abort_if_unique_id_configured(updates=data)
+        self._abort_if_unique_id_configured(updates=data, reload_on_update=False)
         self.context["title_placeholders"] = {"name": discovery_info.name}
         return await self.async_step_hassio_confirm()
 
@@ -261,7 +261,7 @@ class WahaWhatsAppConfigFlow(ConfigFlow, domain=DOMAIN):
                 unique_id = entry.unique_id
                 if CONF_ADDON_SLUG not in entry.data:
                     unique_id = _manual_unique_id(data)
-                return self.async_update_reload_and_abort(
+                return self.async_update_and_abort(
                     entry,
                     unique_id=unique_id,
                     title=_entry_title(server, session),
@@ -301,7 +301,7 @@ class WahaWhatsAppConfigFlow(ConfigFlow, domain=DOMAIN):
             except WahaError:
                 errors["base"] = "waha_error"
             else:
-                return self.async_update_reload_and_abort(
+                return self.async_update_and_abort(
                     entry,
                     title=_entry_title(server, session),
                     data=updated_data,
@@ -389,7 +389,7 @@ class RecipientSubentryFlow(ConfigSubentryFlow):
                     title = person_state.name
                     unique_id = f"person:{person_entity_id}"
                     if reconfigure_subentry is not None:
-                        return self.async_update_reload_and_abort(
+                        return self.async_update_and_abort(
                             entry,
                             reconfigure_subentry,
                             title=title,

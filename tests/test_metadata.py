@@ -40,3 +40,22 @@ def test_recipient_flow_uses_home_assistant_people() -> None:
     source = (INTEGRATION / "config_flow.py").read_text()
     assert 'domain="person"' in source
     assert "CONF_PERSON_ENTITY_ID" in source
+
+
+def test_recipient_changes_use_one_reload_listener() -> None:
+    """All entry and subentry changes reload recipient and group entities."""
+    integration = (INTEGRATION / "__init__.py").read_text()
+    config_flow = (INTEGRATION / "config_flow.py").read_text()
+
+    assert "entry.add_update_listener(_async_reload_entry)" in integration
+    assert "await hass.config_entries.async_reload(entry.entry_id)" in integration
+    assert "async_update_reload_and_abort" not in config_flow
+    assert "reload_on_update=False" in config_flow
+
+
+def test_notify_entities_share_stable_waha_device_name() -> None:
+    """Account identity and server version do not leak into entity IDs."""
+    source = (INTEGRATION / "notify.py").read_text()
+
+    assert 'name="WAHA"' in source
+    assert "name=config_entry.title" not in source

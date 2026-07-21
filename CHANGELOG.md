@@ -5,6 +5,23 @@ All notable changes are documented here. This project follows
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-21
+
+### Fixed
+
+- Reload the integration automatically after recipients are added, updated, or
+  removed so individual entities and household group membership stay current.
+- Use the stable shared device name `WAHA` so new entity IDs are generated as
+  `notify.waha_<recipient>` and `notify.waha_<group>` instead of including the
+  account name and WAHA version.
+- Avoid duplicate config-entry reloads on Home Assistant 2026.6 and newer by
+  routing entry changes through one update listener.
+
+### Documentation
+
+- Correct the notify entity examples and add a staged Companion App-to-WhatsApp
+  migration guide, including actionable-notification and fallback guidance.
+
 ## [1.0.0] - 2026-07-21
 
 ### Added
@@ -37,3 +54,4 @@ All notable changes are documented here. This project follows
   original `v0.1.0` and `v0.2.0` tags remain unchanged.
 
 [1.0.0]: https://github.com/sebastian-greco/home-assistant-whatsapp/releases/tag/v1.0.0
+[1.0.1]: https://github.com/sebastian-greco/home-assistant-whatsapp/releases/tag/v1.0.1

@@ -162,7 +162,7 @@ def _device_info(config_entry: WahaConfigEntry) -> DeviceInfo:
     server = config_entry.runtime_data.server
     return DeviceInfo(
         identifiers={(DOMAIN, config_entry.unique_id or config_entry.entry_id)},
-        name=config_entry.title,
+        name="WAHA",
         manufacturer="WAHA",
         model=f"WhatsApp HTTP API ({server.engine or 'unknown engine'})",
         sw_version=server.version,
