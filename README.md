@@ -11,21 +11,21 @@ This repository contains the two pieces needed for a native experience:
   Assistant notify entities and sends through the app's private API.
 
 There are no Meta templates or per-message provider fees. WAHA uses an
-unofficial WhatsApp protocol, so use a dedicated, replaceable household number
+unofficial WhatsApp protocol, so use a dedicated, replaceable WhatsApp number
 and understand that WhatsApp can restrict it.
 
 ## Current functionality
 
 - Free-form outbound WhatsApp notifications.
-- A native `notify` entity for every configured Home Assistant Person.
-- Family, Adults, and Guests fan-out notify entities.
+- A native `notify` entity for every configured individual contact.
+- Optional association of a contact with an existing Home Assistant Person.
 - Automatic, private discovery of the HAOS app by the HACS integration.
 - Manual connection support for WAHA running elsewhere on the network.
 - A direct action for sending to an arbitrary phone number.
 - QR linking, session lifecycle controls, diagnostics, and persistent backups.
 
-Inbound messages, replies, buttons, guest access provisioning, and household
-commands are intentionally future phases.
+Inbound messages, replies, buttons, access provisioning, and commands are
+intentionally future phases.
 
 ## Requirements
 
@@ -69,32 +69,38 @@ through Supervisor discovery.
 If discovery is unavailable, select **Add integration → WAHA WhatsApp** and
 enter a reachable WAHA URL, API key, and session manually.
 
-## Add people and phone numbers
+## Add contacts
 
 Open the configured WAHA WhatsApp integration and select
 **Add WhatsApp recipient**. For each recipient:
 
-- Select an existing `person.*` entity.
+- Enter a contact name, or select an existing `person.*` entity to use its
+  current name.
 - Enter their international WhatsApp phone number including country code.
-- Choose **Family member** or **Guest**.
-- Optionally include them in the **Adults** group.
 
-The Person's current display name becomes the notify entity name. Home
-Assistant users are normally already associated with a Person. A visitor can
-be created as a Person without creating a login account, which lets the same
-recipient model work for guests.
+The optional Person association is identity metadata only. The integration
+does not modify the Person entity and does not store notification preferences
+or memberships on it. A contact does not need a Home Assistant user or Person.
 
 The integration creates entities similar to:
 
 - `notify.waha_seba`
 - `notify.waha_lucila`
-- `notify.waha_family`
-- `notify.waha_adults`
-- `notify.waha_guests`
 
-Adding, updating, or removing a recipient automatically refreshes the person
-and group entities. Home Assistant may retain an existing entity ID or add a
-suffix, so confirm the actual ID in the entity picker.
+Adding, updating, or removing a recipient automatically refreshes the
+individual contact entities. Home Assistant may retain an existing entity ID
+or add a suffix, so confirm the actual ID in the entity picker.
+
+When a contact is associated with a Person, its notify entity exposes the
+non-sensitive `person_entity_id` state attribute:
+
+```jinja
+{{ state_attr('notify.waha_seba', 'person_entity_id') }}
+```
+
+This returns an entity ID such as `person.seba`. Contacts without a Person do
+not have the attribute. Phone numbers are never exposed as entity state
+attributes.
 
 ## Send a notification
 
@@ -111,8 +117,8 @@ actions:
 ```
 
 The WhatsApp message is rendered as a bold title followed by the details. To
-fan out independently to a household group, target `notify.waha_family`,
-`notify.waha_adults`, or `notify.waha_guests`.
+notify multiple people today, explicitly target each configured individual
+contact from your automation or notification router.
 
 Existing notification routers can keep their `title` and `message` contract:
 
@@ -122,9 +128,6 @@ sequence:
       whatsapp_targets:
         sebastian: notify.waha_seba
         lucila: notify.waha_lucila
-        family: notify.waha_family
-        adults: notify.waha_adults
-        guests: notify.waha_guests
       whatsapp_target: "{{ whatsapp_targets.get(person) }}"
 
   - action: notify.send_message
@@ -135,6 +138,34 @@ sequence:
       title: "{{ final_title }}"
       message: "{{ message }}"
 ```
+
+Routers can also discover the individual WAHA notify entity dynamically from a
+Person entity ID instead of maintaining a contact-name map:
+
+```yaml
+sequence:
+  - variables:
+      whatsapp_target: >-
+        {{ states.notify
+           | selectattr('attributes.person_entity_id', 'eq', person_entity_id)
+           | map(attribute='entity_id')
+           | first
+           | default(none) }}
+
+  - if:
+      - condition: template
+        value_template: "{{ whatsapp_target is string }}"
+    then:
+      - action: notify.send_message
+        target:
+          entity_id: "{{ whatsapp_target }}"
+        data:
+          title: "{{ final_title }}"
+          message: "{{ message }}"
+```
+
+The router should handle the no-match case because contacts are allowed to
+exist without a Person association.
 
 For a one-off number that is not configured as a Person, use the direct
 integration action:
@@ -152,6 +183,10 @@ actions:
 
 The automation editor provides a config-entry picker, so the ID does not need
 to be typed when building the action in the UI.
+
+A generic opt-in broadcast to every configured contact is a possible separate
+feature. It is not a household group and is not included in the current
+release.
 
 For a staged transition from Companion App notifications, including dual
 delivery and the limitations around buttons, Alarmo, priority, and mobile-only

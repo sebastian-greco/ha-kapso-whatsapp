@@ -14,17 +14,13 @@ from homeassistant.config_entries import (
     ConfigSubentryFlow,
     SubentryFlowResult,
 )
-from homeassistant.const import CONF_API_KEY
+from homeassistant.const import CONF_API_KEY, CONF_NAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
-    BooleanSelector,
-    BooleanSelectorConfig,
     EntityFilterSelectorConfig,
     EntitySelector,
     EntitySelectorConfig,
-    SelectSelector,
-    SelectSelectorConfig,
     TextSelector,
     TextSelectorConfig,
     TextSelectorType,
@@ -44,13 +40,9 @@ from .api import (
 from .const import (
     CONF_ADDON_SLUG,
     CONF_API_URL,
-    CONF_CONTACT_ROLE,
-    CONF_GROUP_ADULTS,
     CONF_PERSON_ENTITY_ID,
     CONF_RECIPIENT,
     CONF_SESSION,
-    CONTACT_ROLE_FAMILY,
-    CONTACT_ROLES,
     DEFAULT_API_URL,
     DEFAULT_SESSION,
     DOMAIN,
@@ -95,22 +87,12 @@ REAUTH_SCHEMA = vol.Schema(
 
 RECIPIENT_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_PERSON_ENTITY_ID): EntitySelector(
-            EntitySelectorConfig(
-                filter=EntityFilterSelectorConfig(domain="person")
-            )
+        vol.Optional(CONF_NAME): TextSelector(TextSelectorConfig()),
+        vol.Optional(CONF_PERSON_ENTITY_ID): EntitySelector(
+            EntitySelectorConfig(filter=EntityFilterSelectorConfig(domain="person"))
         ),
         vol.Required(CONF_RECIPIENT): TextSelector(
             TextSelectorConfig(type=TextSelectorType.TEL)
-        ),
-        vol.Required(CONF_CONTACT_ROLE, default=CONTACT_ROLE_FAMILY): SelectSelector(
-            SelectSelectorConfig(
-                options=list(CONTACT_ROLES),
-                translation_key="contact_role",
-            )
-        ),
-        vol.Required(CONF_GROUP_ADULTS, default=False): BooleanSelector(
-            BooleanSelectorConfig()
         ),
     }
 )
@@ -120,6 +102,7 @@ class WahaWhatsAppConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle configuration for a WAHA server and session."""
 
     VERSION = 1
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         """Initialize discovery state."""
@@ -181,13 +164,11 @@ class WahaWhatsAppConfigFlow(ConfigFlow, domain=DOMAIN):
         """Handle automatic discovery from the companion HAOS app."""
         try:
             data = _account_data_from_discovery(discovery_info)
-        except (KeyError, TypeError, ValueError):
+        except KeyError, TypeError, ValueError:
             return self.async_abort(reason="invalid_discovery")
 
         self._discovery_data = data
-        self._discovery_unique_id = (
-            f"addon:{discovery_info.slug}:{data[CONF_SESSION]}"
-        )
+        self._discovery_unique_id = f"addon:{discovery_info.slug}:{data[CONF_SESSION]}"
         await self.async_set_unique_id(self._discovery_unique_id)
         self._abort_if_unique_id_configured(updates=data, reload_on_update=False)
         self.context["title_placeholders"] = {"name": discovery_info.name}
@@ -201,9 +182,7 @@ class WahaWhatsAppConfigFlow(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="invalid_discovery")
 
         errors: dict[str, str] = {}
-        placeholders: dict[str, str] = {
-            "session": self._discovery_data[CONF_SESSION]
-        }
+        placeholders: dict[str, str] = {"session": self._discovery_data[CONF_SESSION]}
         if user_input is not None:
             try:
                 server, session = await _validate_account(
@@ -316,7 +295,7 @@ class WahaWhatsAppConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class RecipientSubentryFlow(ConfigSubentryFlow):
-    """Create or reconfigure a person-linked notification recipient."""
+    """Create or reconfigure an individual notification recipient."""
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -341,7 +320,7 @@ class RecipientSubentryFlow(ConfigSubentryFlow):
         step_id: str,
         reconfigure_subentry: ConfigSubentry | None = None,
     ) -> SubentryFlowResult:
-        """Validate and store a person/phone mapping."""
+        """Validate and store an individual contact."""
         entry = self._get_entry()
         if entry.state is not ConfigEntryState.LOADED:
             return self.async_abort(
@@ -352,59 +331,69 @@ class RecipientSubentryFlow(ConfigSubentryFlow):
         errors: dict[str, str] = {}
         placeholders: dict[str, str] = {}
         if user_input is not None:
-            person_entity_id = user_input[CONF_PERSON_ENTITY_ID]
-            person_state = self.hass.states.get(person_entity_id)
-            if person_state is None or person_entity_id.split(".", 1)[0] != "person":
+            person_entity_id = (
+                str(user_input.get(CONF_PERSON_ENTITY_ID, "")).strip() or None
+            )
+            person_state = (
+                self.hass.states.get(person_entity_id)
+                if person_entity_id is not None
+                else None
+            )
+            if person_entity_id is not None and (
+                person_state is None or person_entity_id.split(".", 1)[0] != "person"
+            ):
                 errors["base"] = "person_not_found"
             else:
-                try:
-                    recipient = normalize_recipient(user_input[CONF_RECIPIENT])
-                except ValueError as err:
-                    errors["base"] = "invalid_recipient"
-                    placeholders["error"] = str(err)
+                name = str(user_input.get(CONF_NAME, "")).strip()
+                if not name and person_state is not None:
+                    name = person_state.name
+                if not name:
+                    errors["base"] = "invalid_name"
                 else:
-                    existing = [
-                        subentry
-                        for subentry in entry.subentries.values()
-                        if reconfigure_subentry is None
-                        or subentry.subentry_id != reconfigure_subentry.subentry_id
-                    ]
-                    if any(
-                        subentry.data.get(CONF_PERSON_ENTITY_ID) == person_entity_id
-                        for subentry in existing
-                    ):
-                        return self.async_abort(reason="person_already_configured")
-                    if any(
-                        subentry.data.get(CONF_RECIPIENT) == recipient
-                        for subentry in existing
-                    ):
-                        return self.async_abort(reason="phone_already_configured")
+                    try:
+                        recipient = normalize_recipient(user_input[CONF_RECIPIENT])
+                    except ValueError as err:
+                        errors["base"] = "invalid_recipient"
+                        placeholders["error"] = str(err)
+                    else:
+                        existing = [
+                            subentry
+                            for subentry in entry.subentries.values()
+                            if reconfigure_subentry is None
+                            or subentry.subentry_id != reconfigure_subentry.subentry_id
+                        ]
+                        if person_entity_id is not None and any(
+                            subentry.data.get(CONF_PERSON_ENTITY_ID) == person_entity_id
+                            for subentry in existing
+                        ):
+                            return self.async_abort(reason="person_already_configured")
+                        if any(
+                            subentry.data.get(CONF_RECIPIENT) == recipient
+                            for subentry in existing
+                        ):
+                            return self.async_abort(reason="phone_already_configured")
 
-                    data = {
-                        CONF_PERSON_ENTITY_ID: person_entity_id,
-                        CONF_RECIPIENT: recipient,
-                        CONF_CONTACT_ROLE: user_input[CONF_CONTACT_ROLE],
-                        CONF_GROUP_ADULTS: user_input[CONF_GROUP_ADULTS],
-                    }
-                    title = person_state.name
-                    unique_id = f"person:{person_entity_id}"
-                    if reconfigure_subentry is not None:
-                        return self.async_update_and_abort(
-                            entry,
-                            reconfigure_subentry,
-                            title=title,
-                            unique_id=unique_id,
+                        data = {CONF_RECIPIENT: recipient}
+                        if person_entity_id is not None:
+                            data[CONF_PERSON_ENTITY_ID] = person_entity_id
+                        if reconfigure_subentry is not None:
+                            return self.async_update_and_abort(
+                                entry,
+                                reconfigure_subentry,
+                                title=name,
+                                data=data,
+                            )
+                        return self.async_create_entry(
+                            title=name,
                             data=data,
                         )
-                    return self.async_create_entry(
-                        title=title,
-                        unique_id=unique_id,
-                        data=data,
-                    )
 
-        suggested_values = user_input or {}
+        suggested_values = dict(user_input or {})
         if user_input is None and reconfigure_subentry is not None:
-            suggested_values = dict(reconfigure_subentry.data)
+            suggested_values = {
+                **reconfigure_subentry.data,
+                CONF_NAME: reconfigure_subentry.title,
+            }
 
         return self.async_show_form(
             step_id=step_id,

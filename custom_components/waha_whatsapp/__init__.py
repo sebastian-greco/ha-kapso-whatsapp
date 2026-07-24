@@ -20,7 +20,12 @@ from homeassistant.exceptions import (
     HomeAssistantError,
     ServiceValidationError,
 )
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import (
+    config_validation as cv,
+)
+from homeassistant.helpers import (
+    entity_registry as er,
+)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import (
@@ -42,6 +47,7 @@ from .const import (
     SERVICE_SEND_MESSAGE,
 )
 from .helpers import normalize_recipient, render_notification
+from .migration import legacy_group_unique_ids, without_obsolete_group_config
 
 PLATFORMS: list[Platform] = [Platform.NOTIFY]
 CONF_CONFIG_ENTRY_ID = "config_entry_id"
@@ -83,6 +89,42 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
+async def async_migrate_entry(hass: HomeAssistant, entry: WahaConfigEntry) -> bool:
+    """Remove legacy household-group config and entities."""
+    if entry.version != 1:
+        return False
+
+    if entry.minor_version < 2:
+        for subentry in tuple(entry.subentries.values()):
+            migrated_data = without_obsolete_group_config(subentry.data)
+            if migrated_data != subentry.data:
+                hass.config_entries.async_update_subentry(
+                    entry, subentry, data=migrated_data
+                )
+
+        entity_registry = er.async_get(hass)
+        obsolete_unique_ids = legacy_group_unique_ids(entry.unique_id)
+        for entity in er.async_entries_for_config_entry(
+            entity_registry, entry.entry_id
+        ):
+            if (
+                entity.domain == Platform.NOTIFY
+                and entity.platform == DOMAIN
+                and entity.unique_id in obsolete_unique_ids
+            ):
+                entity_registry.async_remove(entity.entity_id)
+
+        hass.config_entries.async_update_entry(
+            entry,
+            data=without_obsolete_group_config(entry.data),
+            options=without_obsolete_group_config(entry.options),
+            version=1,
+            minor_version=2,
+        )
+
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: WahaConfigEntry) -> bool:
     """Set up a WAHA WhatsApp config entry."""
     client = WahaClient(
@@ -111,10 +153,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: WahaConfigEntry) -> boo
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def _async_reload_entry(
-    hass: HomeAssistant, entry: WahaConfigEntry
-) -> None:
-    """Reload recipient entities and group membership after entry changes."""
+async def _async_reload_entry(hass: HomeAssistant, entry: WahaConfigEntry) -> None:
+    """Reload individual recipient entities after entry changes."""
     await hass.config_entries.async_reload(entry.entry_id)
 
 

@@ -36,7 +36,7 @@
         "data_description": {
           "api_key": "The API key configured in WAHA.",
           "api_url": "The internal or network URL of the WAHA API, without a trailing slash.",
-          "session": "The WAHA session used by the household WhatsApp account."
+          "session": "The WAHA session used by this WhatsApp account."
         },
         "description": "Update the connection to the WAHA server. Normally the HAOS app keeps this synchronized automatically.",
         "title": "Reconfigure WAHA"
@@ -62,11 +62,12 @@
       "abort": {
         "entry_not_loaded": "{entry_title} is not loaded.",
         "person_already_configured": "This Home Assistant Person already has a WhatsApp recipient.",
-        "phone_already_configured": "This phone number is already assigned to another Person.",
+        "phone_already_configured": "This phone number is already assigned to another contact.",
         "reconfigure_successful": "The WhatsApp recipient was updated successfully."
       },
       "entry_type": "WhatsApp recipient",
       "error": {
+        "invalid_name": "Enter a contact name or select a Home Assistant Person.",
         "invalid_recipient": "Invalid phone number: {error}",
         "person_not_found": "Select an existing Home Assistant Person entity."
       },
@@ -76,34 +77,30 @@
       "step": {
         "reconfigure": {
           "data": {
-            "contact_role": "Household role",
-            "group_adults": "Include in Adults group",
-            "person_entity_id": "Home Assistant Person",
+            "name": "Contact name",
+            "person_entity_id": "Home Assistant Person (optional)",
             "recipient": "WhatsApp phone number"
           },
           "data_description": {
-            "contact_role": "Family members receive Family notifications; guests receive Guest notifications.",
-            "group_adults": "Also include this person in the Adults notification group.",
-            "person_entity_id": "Select an existing person.* entity. A Person can represent a guest without giving them a Home Assistant login.",
+            "name": "Name used for this contact and its notify entity. If empty, the selected Person's current name is used.",
+            "person_entity_id": "Optional identity metadata linking this contact to an existing person.* entity. The integration does not modify the Person.",
             "recipient": "International telephone number including country code."
           },
-          "description": "Update the Person-to-WhatsApp mapping and household groups.",
+          "description": "Update the individual WhatsApp contact. Person association is optional metadata.",
           "title": "Update WhatsApp recipient"
         },
         "user": {
           "data": {
-            "contact_role": "Household role",
-            "group_adults": "Include in Adults group",
-            "person_entity_id": "Home Assistant Person",
+            "name": "Contact name",
+            "person_entity_id": "Home Assistant Person (optional)",
             "recipient": "WhatsApp phone number"
           },
           "data_description": {
-            "contact_role": "Family members receive Family notifications; guests receive Guest notifications.",
-            "group_adults": "Also include this person in the Adults notification group.",
-            "person_entity_id": "Select an existing person.* entity. A Person can represent a guest without giving them a Home Assistant login.",
+            "name": "Name used for this contact and its notify entity. If empty, the selected Person's current name is used.",
+            "person_entity_id": "Optional identity metadata linking this contact to an existing person.* entity. The integration does not modify the Person.",
             "recipient": "International telephone number including country code."
           },
-          "description": "Select an existing Home Assistant Person and add their WhatsApp number. The Person's name becomes the notify entity name.",
+          "description": "Add an individual WhatsApp contact. You may associate an existing Home Assistant Person as identity metadata.",
           "title": "Add WhatsApp recipient"
         }
       }
@@ -121,14 +118,6 @@
     },
     "invalid_recipient": {
       "message": "Invalid WhatsApp phone number: {error}"
-    }
-  },
-  "selector": {
-    "contact_role": {
-      "options": {
-        "family": "Family member",
-        "guest": "Guest"
-      }
     }
   },
   "services": {

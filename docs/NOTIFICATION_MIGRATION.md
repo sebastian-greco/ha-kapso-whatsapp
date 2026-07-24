@@ -13,9 +13,6 @@ Home Assistant Companion App where WhatsApp cannot yet replace its behavior.
 
    - `notify.waha_seba`
    - `notify.waha_lucila`
-   - `notify.waha_family`
-   - `notify.waha_adults`
-   - `notify.waha_guests`
 
 4. Send one direct test from **Developer Tools → Actions → YAML mode**:
 
@@ -41,11 +38,13 @@ notification wrappers:
 | --- | --- |
 | `title` | Rendered as a bold WhatsApp heading. |
 | `message` | Rendered below the title as ordinary text. |
-| logical recipient | Mapped to an individual or household-group notify entity. |
+| logical recipient | Mapped to an individual contact notify entity. |
 
-`notify.waha_family`, `notify.waha_adults`, and `notify.waha_guests` fan out as
-independent direct messages to the recipients currently assigned to each
-logical group. They do not send to a shared WhatsApp group chat.
+The integration does not infer recipient sets from Home Assistant People or
+store roles, notification preferences, or memberships on Person entities.
+Route to explicit individual targets in your central notification script.
+Associated contacts expose `person_entity_id` on their individual notify
+entity. The phone number is not exposed.
 
 ## What does not map yet
 
@@ -79,9 +78,6 @@ title. The following block assumes the router already defines `person`,
     whatsapp_targets:
       sebastian: notify.waha_seba
       lucila: notify.waha_lucila
-      family: notify.waha_family
-      adults: notify.waha_adults
-      guests: notify.waha_guests
     whatsapp_target: "{{ whatsapp_targets.get(person) }}"
 
 - if:
@@ -98,7 +94,39 @@ title. The following block assumes the router already defines `person`,
 ```
 
 `continue_on_error: true` prevents a temporary WAHA or WhatsApp failure from
-stopping the remainder of a household routine. It does not retry the message.
+stopping the remainder of a routine. It does not retry the message.
+
+### Discover a contact from its Person association
+
+To avoid maintaining a name-to-notify-entity map, a router that already
+receives a Person entity ID can discover the associated individual WAHA notify
+entity:
+
+```yaml
+- variables:
+    whatsapp_target: >-
+      {{ states.notify
+         | selectattr('attributes.person_entity_id', 'eq', person_entity_id)
+         | map(attribute='entity_id')
+         | first
+         | default(none) }}
+
+- if:
+    - condition: template
+      value_template: "{{ whatsapp_target is string }}"
+  then:
+    - action: notify.send_message
+      continue_on_error: true
+      target:
+        entity_id: "{{ whatsapp_target }}"
+      data:
+        title: "{{ final_title }}"
+        message: "{{ message }}"
+```
+
+For a known notify entity, the same metadata is available directly through
+`state_attr('notify.waha_seba', 'person_entity_id')`. The attribute is absent
+when a contact has no Person association, so routers must handle no match.
 
 Keep logical priority in the router even though WhatsApp has no equivalent to
 mobile notification channels. The router can continue expressing urgency in
@@ -109,8 +137,8 @@ priority messages.
 
 ### 1. Test only
 
-Send manually to each individual and logical group. Confirm that Family,
-Adults, and Guests reach exactly the intended people with no duplicates.
+Send manually to each configured individual contact and confirm the expected
+person receives it.
 
 ### 2. Dual delivery
 
@@ -140,12 +168,6 @@ Version `1.0.1` and newer reload automatically after recipient changes. On
 through HACS. If the problem remains on a newer version, inspect
 **Settings → System → Logs** for `waha_whatsapp` errors.
 
-### A group reaches the wrong people
-
-Open each WhatsApp recipient and verify **Family member or guest** and
-**Include in Adults**. Saving the recipient refreshes every group entity in
-`1.0.1` and newer.
-
 ### Sending fails
 
 Verify that the WAHA session is `WORKING`, the HAOS app is running, and the
@@ -158,3 +180,19 @@ Use the entity picker as the source of truth. Home Assistant preserves user
 renames and may add a numeric suffix to avoid a collision. Changing an entity
 ID later requires updating every automation, script, scene, and dashboard that
 references it.
+
+## Upgrading from household groups
+
+Version `1.1.0` removes the former Family, Adults, and Guests configuration and
+fan-out entities. During config-entry migration, the integration:
+
+- preserves every recipient subentry, phone number, contact title, optional
+  Person association, and individual notify entity;
+- removes only the obsolete role/adult flags from integration-owned config
+  data; and
+- removes only the three integration-owned legacy group entities from the
+  entity registry.
+
+Update automations that referenced the removed group entities to target
+individual contacts explicitly. A future generic “broadcast to all configured
+contacts” would be a separate opt-in feature, not a household role or group.

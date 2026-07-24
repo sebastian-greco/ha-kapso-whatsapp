@@ -26,6 +26,24 @@ def test_notification_title_is_whatsapp_readable() -> None:
     assert helpers.render_notification("Door open") == "Door open"
 
 
+def test_contact_attributes_include_associated_person() -> None:
+    """A linked Person is exposed without leaking the phone number."""
+    attributes = helpers.contact_state_attributes(
+        {
+            "person_entity_id": "person.seba",
+            "recipient": "393331234567",
+        }
+    )
+
+    assert attributes == {"person_entity_id": "person.seba"}
+    assert "recipient" not in attributes
+
+
+def test_contact_attributes_omit_unassociated_person() -> None:
+    """A contact without a Person does not expose an empty attribute."""
+    assert helpers.contact_state_attributes({"recipient": "393331234567"}) == {}
+
+
 @pytest.mark.parametrize("recipient", ["+39", "abc123", "1" * 16])
 def test_invalid_phone(recipient: str) -> None:
     """Malformed phone recipients fail locally."""

@@ -5,6 +5,28 @@ All notable changes are documented here. This project follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-24
+
+### Changed
+
+- Make the Home Assistant Person association optional identity metadata and
+  allow individual contacts to use an independently configured display name.
+- Expose the associated `person_entity_id` as non-sensitive state metadata on
+  individual notify entities so routers can discover contacts dynamically.
+- Keep notification routing entirely contact-based. A possible broadcast to
+  all configured contacts is explicitly separate and remains unimplemented.
+
+### Removed
+
+- Remove Family, Adults, and Guests recipient settings and fan-out notify
+  entities.
+
+### Migration
+
+- Migrate config entries to version 1.2 by removing only obsolete group fields
+  and the three exact integration-owned group entities while preserving every
+  individual contact, Person association, and individual notify entity.
+
 ## [1.0.1] - 2026-07-21
 
 ### Fixed
@@ -55,3 +77,4 @@ All notable changes are documented here. This project follows
 
 [1.0.0]: https://github.com/sebastian-greco/home-assistant-whatsapp/releases/tag/v1.0.0
 [1.0.1]: https://github.com/sebastian-greco/home-assistant-whatsapp/releases/tag/v1.0.1
+[1.1.0]: https://github.com/sebastian-greco/home-assistant-whatsapp/releases/tag/v1.1.0

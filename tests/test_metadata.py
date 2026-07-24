@@ -36,14 +36,17 @@ def test_service_metadata_matches_actions() -> None:
 
 
 def test_recipient_flow_uses_home_assistant_people() -> None:
-    """Recipient setup links a Person entity to a WhatsApp number."""
+    """Recipient setup can link optional Person metadata to a contact."""
     source = (INTEGRATION / "config_flow.py").read_text()
     assert 'domain="person"' in source
-    assert "CONF_PERSON_ENTITY_ID" in source
+    assert "vol.Optional(CONF_PERSON_ENTITY_ID)" in source
+    assert "vol.Optional(CONF_NAME)" in source
+    assert "CONF_CONTACT_ROLE" not in source
+    assert "CONF_GROUP_ADULTS" not in source
 
 
 def test_recipient_changes_use_one_reload_listener() -> None:
-    """All entry and subentry changes reload recipient and group entities."""
+    """All entry and subentry changes reload individual recipient entities."""
     integration = (INTEGRATION / "__init__.py").read_text()
     config_flow = (INTEGRATION / "config_flow.py").read_text()
 
@@ -59,3 +62,32 @@ def test_notify_entities_share_stable_waha_device_name() -> None:
 
     assert 'name="WAHA"' in source
     assert "name=config_entry.title" not in source
+
+
+def test_notify_platform_has_only_individual_contacts() -> None:
+    """The notify platform does not create household-group entities."""
+    source = (INTEGRATION / "notify.py").read_text()
+
+    assert "WahaGroupNotifyEntity" not in source
+    assert "RECIPIENT_GROUP_" not in source
+    assert "config_entry.subentries.items()" in source
+
+
+def test_notify_entities_expose_safe_person_metadata() -> None:
+    """Individual entities publish only the template-safe Person association."""
+    source = (INTEGRATION / "notify.py").read_text()
+
+    assert "_attr_extra_state_attributes = contact_state_attributes(" in source
+
+
+def test_config_entry_migration_is_registered() -> None:
+    """Version 1.2 migration removes only legacy integration-owned groups."""
+    integration = (INTEGRATION / "__init__.py").read_text()
+    config_flow = (INTEGRATION / "config_flow.py").read_text()
+
+    assert "MINOR_VERSION = 2" in config_flow
+    assert "async def async_migrate_entry(" in integration
+    assert "async_update_subentry(" in integration
+    assert "async_entries_for_config_entry(" in integration
+    assert "entity.platform == DOMAIN" in integration
+    assert "entity.unique_id in obsolete_unique_ids" in integration

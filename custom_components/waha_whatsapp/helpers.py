@@ -1,6 +1,10 @@
 """Validation and formatting helpers for WAHA WhatsApp."""
 
 import re
+from collections.abc import Mapping
+from typing import Any
+
+from .const import ATTR_PERSON_ENTITY_ID, CONF_PERSON_ENTITY_ID
 
 _PHONE_RE = re.compile(r"^[0-9]{7,15}$")
 _CHAT_ID_RE = re.compile(r"^[0-9]{7,15}@c\.us$")
@@ -36,3 +40,11 @@ def render_notification(message: str, title: str | None = None) -> str:
     if not clean_title:
         return clean_message
     return f"*{clean_title}*\n\n{clean_message}"
+
+
+def contact_state_attributes(data: Mapping[str, Any]) -> dict[str, str]:
+    """Expose non-sensitive contact identity metadata as state attributes."""
+    person_entity_id = data.get(CONF_PERSON_ENTITY_ID)
+    if not isinstance(person_entity_id, str) or not person_entity_id:
+        return {}
+    return {ATTR_PERSON_ENTITY_ID: person_entity_id}
